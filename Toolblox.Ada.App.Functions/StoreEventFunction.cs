@@ -4,7 +4,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Numerics;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Azure.Data.Tables;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +12,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Toolblox.Ada.App.Model;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Toolblox.Ada.App.Functions

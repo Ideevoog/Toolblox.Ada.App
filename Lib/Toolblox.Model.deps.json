@@ -1,0 +1,41 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v6.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v6.0": {
+      "Toolblox.Model/1.0.0": {
+        "dependencies": {
+          "Dahomey.Json.Attributes": "1.0.1"
+        },
+        "runtime": {
+          "Toolblox.Model.dll": {}
+        }
+      },
+      "Dahomey.Json.Attributes/1.0.1": {
+        "runtime": {
+          "lib/net6.0/Dahomey.Json.Attributes.dll": {
+            "assemblyVersion": "1.0.1.0",
+            "fileVersion": "1.0.1.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Toolblox.Model/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Dahomey.Json.Attributes/1.0.1": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-5V73KuRVnyvyB8+BEkCvxpbI3MZpG6PQNdfKGxeKFBabotepbrnJ+Xz00P84BD4zdg7UPGybo9Nsl988Y8/tfw==",
+      "path": "dahomey.json.attributes/1.0.1",
+      "hashPath": "dahomey.json.attributes.1.0.1.nupkg.sha512"
+    }
+  }
+}

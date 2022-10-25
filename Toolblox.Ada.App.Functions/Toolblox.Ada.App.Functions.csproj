@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
@@ -11,7 +11,17 @@
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.EventHubs" Version="4.3.0" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Tables" Version="1.0.0" />
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="4.0.1" />
+    <PackageReference Include="NBitcoin" Version="7.0.11" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
+    <PackageReference Include="vCardLib.dll" Version="4.0.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Toolblox.Model">
+      <HintPath>..\Lib\Toolblox.Model.dll</HintPath>
+    </Reference>
+    <Reference Include="Toolblox.Ada.App.Model">
+      <HintPath>..\Lib\Toolblox.Ada.App.Model.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <None Update="host.json">
