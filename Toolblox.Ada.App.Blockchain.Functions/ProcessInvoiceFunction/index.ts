@@ -16,7 +16,7 @@ const connectionConfig = {
   };
 
 const tableStorageConnection = process.env["adawillhandlestorage_STORAGE"] || "";
-console.info("connection IZ", tableStorageConnection);
+
 const tableName = `Invoices`;
 
 const queueTrigger: AzureFunction = async function (context: Context, myQueueItem: string): Promise<void> {
@@ -46,8 +46,6 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     await client.upsertEntity(invoice, "Merge");
 
     context.bindings.outQueueItem = myQueueItem;
-
-    context.log('ID WAS ', invoice.Id);
 };
 
 interface Invoice {
