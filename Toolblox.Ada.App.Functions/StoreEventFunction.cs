@@ -1,19 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using Azure.Data.Tables;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.EventHubs;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Toolblox.Ada.App.Model;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace Toolblox.Ada.App.Functions
 {
@@ -40,7 +36,9 @@ namespace Toolblox.Ada.App.Functions
 
 	public class StoreEventFunction
     {
+#if !DEBUG
         [FunctionName("InvoiceFunction")]
+#endif
         public async Task Run(
             [EventHubTrigger("invoiceevent", Connection = "EventHub")] EventData[] events,
             [Table("Invoices")] TableClient todoTable,
@@ -95,51 +93,6 @@ namespace Toolblox.Ada.App.Functions
 
             if (exceptions.Count == 1)
                 throw exceptions.Single();
-        }
-
-
-        [FunctionName("UpsertAccountant")]
-        public static async Task<IActionResult> UpsertAccountant(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "Accountant/Upsert")] HttpRequestMessage req,
-            [Table("Accountants")] TableClient todoTable,
-            ILogger log)
-        {
-            dynamic body = await req.Content.ReadAsStringAsync();
-            var accountant = JsonSerializer.Deserialize<Accountant>(body as string);
-            //var userId = await Security.GetUser(req);
-            string userId = "";
-            if (string.IsNullOrWhiteSpace(accountant.User) || accountant.User != userId)
-            {
-                //check if not exist already
-                var existingAccountant = await todoTable.QueryAsync<Azure.Data.Tables.TableEntity>(filter: $"PartitionKey eq 'testnet' and RowKey eq '{accountant.Id}'").FirstOrDefaultAsync();
-                if (existingAccountant != null && existingAccountant.GetString("User") != userId)
-                {
-                    throw new Exception("Accountant already exists");
-                }
-
-            }
-            var entity = new Azure.Data.Tables.TableEntity("testnet", accountant.Id.ToString())
-            {
-                { "User", userId },
-                { "CreatedAt", DateTimeOffset.Now },
-                { "ModifiedAt", DateTimeOffset.Now }
-            };
-            todoTable.UpsertEntity(entity);
-            return new OkObjectResult("OK");
-        }
-
-
-        public static Accountant ToAccountant(Azure.Data.Tables.TableEntity tableEntity)
-        {
-            if (tableEntity == null)
-            {
-                return null;
-            }
-            return new Accountant
-            {
-                Id = Guid.TryParse(tableEntity.RowKey, out var id) ? id.ToString() : Guid.NewGuid().ToString(),
-                User = tableEntity.GetString("User") ?? tableEntity.GetString("Owner"),
-            };
         }
 
 

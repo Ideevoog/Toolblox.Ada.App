@@ -8,10 +8,22 @@
     ".NETCoreApp,Version=v6.0": {
       "Toolblox.Ada.App.Model/1.0.0": {
         "dependencies": {
+          "Dahomey.Json": "1.12.2",
           "Toolblox.Model": "1.0.0"
         },
         "runtime": {
           "Toolblox.Ada.App.Model.dll": {}
+        }
+      },
+      "Dahomey.Json/1.12.2": {
+        "dependencies": {
+          "Dahomey.Json.Attributes": "1.0.1"
+        },
+        "runtime": {
+          "lib/net6.0/Dahomey.Json.dll": {
+            "assemblyVersion": "1.12.2.0",
+            "fileVersion": "1.12.2.0"
+          }
         }
       },
       "Dahomey.Json.Attributes/1.0.1": {
@@ -37,6 +49,13 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "Dahomey.Json/1.12.2": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-lguY4WN14f6kQuKJTGX+nsTT0V31PWHa+jcPx86B/xmOBgm4FwdLKtymMFBKAE5yBDDKhO7iQIvFwQNHufWLRw==",
+      "path": "dahomey.json/1.12.2",
+      "hashPath": "dahomey.json.1.12.2.nupkg.sha512"
     },
     "Dahomey.Json.Attributes/1.0.1": {
       "type": "package",
