@@ -8,8 +8,10 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Toolblox.Ada.App.Functions.Helpers;
 using Toolblox.Ada.App.Functions.Services;
 using Toolblox.Ada.App.Model;
+using Toolblox.Model;
 
 namespace Toolblox.Ada.App.Functions
 {
@@ -24,7 +26,7 @@ namespace Toolblox.Ada.App.Functions
             log.LogInformation("C# HTTP trigger function processed a request.");
             var userId = await Security.GetUser(req, false);
             var filter = !string.IsNullOrWhiteSpace(userId)
-                ? $"PartitionKey eq '{userId}'"
+                ? $"PartitionKey eq '{userId.Sanitize()}' or (IsPublic and IsDeployed)"
                 : $"IsPublic and IsDeployed";
 
             var pages = await todoTable.QueryAsync<TableEntity>(filter: filter).AsPages().ToListAsync();
@@ -45,18 +47,25 @@ namespace Toolblox.Ada.App.Functions
             if (string.IsNullOrWhiteSpace(accountant.User) || accountant.User != userId)
             {
                 //check if not exist already
-                var existingAccountant = await todoTable.QueryAsync<TableEntity>(filter: $"RowKey eq '{accountant.Id}'").FirstOrDefaultAsync();
+                var existingAccountant = await todoTable.QueryAsync<TableEntity>(filter: $"RowKey eq '{accountant.Id.Sanitize()}'").FirstOrDefaultAsync();
                 if (existingAccountant != null && existingAccountant.PartitionKey != userId)
                 {
                     throw new Exception("Accountant already exists");
                 }
             }
             var entity = new TableEntity(userId, accountant.Id.ToString())
-            {
-                { "EditStep", (int)accountant.EditStep },
+			{
+				{ "IsDeployed", accountant.IsDeployed },
+				{ "NearTestnet", accountant.NearTestnet },
+				{ "NearMainnet", accountant.NearMainnet },
+				{ "Name", accountant.Name },
+				{ "SelectedBlockchainKind", (int)accountant.SelectedBlockchainKind },
+				{ "SelectedChain", (int)accountant.SelectedChain },
+				{ "EditStep", (int)accountant.EditStep },
                 { "CreatedAt", accountant.CreatedAt != DateTimeOffset.MinValue ? accountant.CreatedAt : DateTimeOffset.Now },
-                { "ModifiedAt", DateTimeOffset.Now }
-            };
+                { "ModifiedAt", DateTimeOffset.Now },
+                { "DeployedAt", accountant.DeployedAt },
+			};
             todoTable.UpsertEntity(entity);
             return new OkObjectResult("OK");
         }
@@ -70,7 +79,7 @@ namespace Toolblox.Ada.App.Functions
             var query = req.RequestUri.ParseQueryString();
             var id = query.Get("id");
             var userId = await Security.GetUser(req);
-            var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{userId}' and RowKey eq '{id}'").FirstOrDefaultAsync();
+            var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{userId.Sanitize()}' and RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
             if (tableEntity == null)
             {
                 return new NotFoundObjectResult(null);
@@ -87,7 +96,7 @@ namespace Toolblox.Ada.App.Functions
         {
             var query = req.RequestUri.ParseQueryString();
             var id = query.Get("id");
-            var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"Id eq '{id}'").FirstOrDefaultAsync();
+            var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
             var workflowMetadata = ToAccountant(tableEntity);
             if (workflowMetadata == null)
             {
@@ -103,12 +112,19 @@ namespace Toolblox.Ada.App.Functions
                 return null;
             }
             return new Accountant
-            {
-                Id = Guid.TryParse(tableEntity.RowKey, out var id) ? id.ToString() : Guid.NewGuid().ToString(),
+			{
+				Name = tableEntity.GetString("Name"),
+				NearMainnet = tableEntity.GetString("NearMainnet"),
+				NearTestnet = tableEntity.GetString("NearTestnet"),
+				SelectedBlockchainKind = (BlockchainKind)tableEntity.GetInt32("SelectedBlockchainKind").GetValueOrDefault(),
+				SelectedChain = (Blockchain)tableEntity.GetInt32("SelectedChain").GetValueOrDefault(),
+				Id = Guid.TryParse(tableEntity.RowKey, out var id) ? id.ToString() : Guid.NewGuid().ToString(),
                 User = tableEntity.PartitionKey,
                 CreatedAt = tableEntity.GetDateTimeOffset("CreatedAt").GetValueOrDefault(),
                 ModifiedAt = tableEntity.GetDateTimeOffset("ModifiedAt").GetValueOrDefault(),
-                DeployedAt = tableEntity.GetDateTimeOffset("DeployedAt").GetValueOrDefault()
+                IsDeployed = tableEntity.GetBoolean("IsDeployed") ?? false,
+				DeployedAt = tableEntity.GetDateTimeOffset("DeployedAt").GetValueOrDefault(),
+                EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep")
             };
         }
     }

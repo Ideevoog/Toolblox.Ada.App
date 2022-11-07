@@ -11,7 +11,7 @@ namespace Toolblox.Ada.App.Functions.Services
         public SystemTextJsonResult(object value, JsonSerializerOptions options = null)
         {
             ContentType = ContentTypeApplicationJson;
-            Content = options == null ? JsonSerializer.Serialize(value, new JsonSerializerOptions().ConfigureToolbloxInheritance()) : JsonSerializer.Serialize(value, options);
+            Content = options == null ? JsonSerializer.Serialize(value, new JsonSerializerOptions().ConfigureAdaDtoInheritance()) : JsonSerializer.Serialize(value, options);
         }
     }
 }
