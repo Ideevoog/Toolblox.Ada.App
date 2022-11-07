@@ -15,7 +15,7 @@ namespace Toolblox.Ada.App.Functions
 {
     public class AccountantFunctions
     {
-        [FunctionName("Accountants")]
+	    [FunctionName("Accountants")]
         public static async Task<IActionResult> Accountants(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "Accountant/List")] HttpRequestMessage req,
             [Table("Accountants")] TableClient todoTable,
