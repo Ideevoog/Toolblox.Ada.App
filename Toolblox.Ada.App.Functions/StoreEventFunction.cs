@@ -38,7 +38,9 @@ namespace Toolblox.Ada.App.Functions
 
 	public class StoreEventFunction
     {
+#if !DEBUG
         [FunctionName("InvoiceFunction")]
+#endif
         public async Task Run(
             [EventHubTrigger("invoiceevent", Connection = "EventHub")] EventData[] events,
             [Table("Invoices")] TableClient todoTable,
