@@ -56,6 +56,7 @@ namespace Toolblox.Ada.App.Functions
             var entity = new TableEntity(userId, accountant.Id.ToString())
 			{
 				{ "IsDeployed", accountant.IsDeployed },
+				{ "PublicKey", accountant.PublicKey },
 				{ "NearTestnet", accountant.NearTestnet },
 				{ "NearMainnet", accountant.NearMainnet },
 				{ "Name", accountant.Name },
@@ -115,6 +116,7 @@ namespace Toolblox.Ada.App.Functions
 			{
 				Name = tableEntity.GetString("Name"),
 				NearMainnet = tableEntity.GetString("NearMainnet"),
+				PublicKey = tableEntity.GetString("PublicKey"),
 				NearTestnet = tableEntity.GetString("NearTestnet"),
 				SelectedBlockchainKind = (BlockchainKind)tableEntity.GetInt32("SelectedBlockchainKind").GetValueOrDefault(),
 				SelectedChain = (Blockchain)tableEntity.GetInt32("SelectedChain").GetValueOrDefault(),
@@ -124,7 +126,7 @@ namespace Toolblox.Ada.App.Functions
                 ModifiedAt = tableEntity.GetDateTimeOffset("ModifiedAt").GetValueOrDefault(),
                 IsDeployed = tableEntity.GetBoolean("IsDeployed") ?? false,
 				DeployedAt = tableEntity.GetDateTimeOffset("DeployedAt").GetValueOrDefault(),
-                EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep")
+				EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep")
             };
         }
     }
