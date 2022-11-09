@@ -4,10 +4,12 @@ using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Azure.Amqp.Serialization;
 using Toolblox.Ada.App.Functions.Helpers;
 using Toolblox.Ada.App.Functions.Services;
 using Toolblox.Ada.App.Model;
@@ -42,7 +44,8 @@ namespace Toolblox.Ada.App.Functions
             ILogger log)
         {
             dynamic body = await req.Content.ReadAsStringAsync();
-            var accountant = JsonSerializer.Deserialize<Accountant>(body as string);
+            var serializerOptions = new JsonSerializerOptions().ConfigureAdaDtoInheritance();
+            var accountant = JsonSerializer.Deserialize<Accountant>(body as string, serializerOptions);
             var userId = await Security.GetUser(req);
             if (string.IsNullOrWhiteSpace(accountant.User) || accountant.User != userId)
             {
@@ -56,6 +59,7 @@ namespace Toolblox.Ada.App.Functions
             var entity = new TableEntity(userId, accountant.Id.ToString())
 			{
 				{ "IsDeployed", accountant.IsDeployed },
+				{ "IsActive", accountant.IsActive },
 				{ "PublicKey", accountant.PublicKey },
 				{ "NearTestnet", accountant.NearTestnet },
 				{ "NearMainnet", accountant.NearMainnet },
@@ -63,9 +67,12 @@ namespace Toolblox.Ada.App.Functions
 				{ "SelectedBlockchainKind", (int)accountant.SelectedBlockchainKind },
 				{ "SelectedChain", (int)accountant.SelectedChain },
 				{ "EditStep", (int)accountant.EditStep },
-                { "CreatedAt", accountant.CreatedAt != DateTimeOffset.MinValue ? accountant.CreatedAt : DateTimeOffset.Now },
-                { "ModifiedAt", DateTimeOffset.Now },
-                { "DeployedAt", accountant.DeployedAt },
+				{ "CreatedAt", accountant.CreatedAt != DateTimeOffset.MinValue ? accountant.CreatedAt : DateTimeOffset.Now },
+				{ "ActivatedAt", accountant.ActivatedAt.HasValue && accountant.ActivatedAt != DateTimeOffset.MinValue ? accountant.ActivatedAt : null },
+				{ "ModifiedAt", DateTimeOffset.Now },
+				{ "DeployedAt", accountant.DeployedAt },
+				{ "ContactInfo", accountant.ContactInfo },
+				{ "Tasks", JsonSerializer.Serialize(accountant.Tasks, serializerOptions) },
 			};
             todoTable.UpsertEntity(entity);
             return new OkObjectResult("OK");
@@ -111,11 +118,14 @@ namespace Toolblox.Ada.App.Functions
             if (tableEntity == null)
             {
                 return null;
-            }
-            return new Accountant
+			}
+			var serializerOptions = new JsonSerializerOptions().ConfigureAdaDtoInheritance();
+			var tasks = tableEntity.GetString("Tasks");
+			return new Accountant
 			{
 				Name = tableEntity.GetString("Name"),
 				NearMainnet = tableEntity.GetString("NearMainnet"),
+				ContactInfo = tableEntity.GetString("ContactInfo"),
 				PublicKey = tableEntity.GetString("PublicKey"),
 				NearTestnet = tableEntity.GetString("NearTestnet"),
 				SelectedBlockchainKind = (BlockchainKind)tableEntity.GetInt32("SelectedBlockchainKind").GetValueOrDefault(),
@@ -125,8 +135,13 @@ namespace Toolblox.Ada.App.Functions
                 CreatedAt = tableEntity.GetDateTimeOffset("CreatedAt").GetValueOrDefault(),
                 ModifiedAt = tableEntity.GetDateTimeOffset("ModifiedAt").GetValueOrDefault(),
                 IsDeployed = tableEntity.GetBoolean("IsDeployed") ?? false,
+                IsActive = tableEntity.GetBoolean("IsActive") ?? false,
 				DeployedAt = tableEntity.GetDateTimeOffset("DeployedAt").GetValueOrDefault(),
-				EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep")
+                ActivatedAt = tableEntity.GetDateTimeOffset("ActivatedAt").GetValueOrDefault(),
+				EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep"),
+                Tasks = tasks == null
+	                ? new List<AccountingTaskBase>()
+	                : JsonSerializer.Deserialize<List<AccountingTaskBase>>(tasks, serializerOptions)!
             };
         }
     }
