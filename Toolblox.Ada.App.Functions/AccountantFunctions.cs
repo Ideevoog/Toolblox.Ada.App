@@ -59,6 +59,7 @@ namespace Toolblox.Ada.App.Functions
             var entity = new TableEntity(userId, accountant.Id.ToString())
 			{
 				{ "IsDeployed", accountant.IsDeployed },
+				{ "AddressBookUrl", accountant.AddressBookUrl },
 				{ "IsActive", accountant.IsActive },
 				{ "PublicKey", accountant.PublicKey },
 				{ "NearTestnet", accountant.NearTestnet },
@@ -73,6 +74,7 @@ namespace Toolblox.Ada.App.Functions
 				{ "DeployedAt", accountant.DeployedAt },
 				{ "ContactInfo", accountant.ContactInfo },
 				{ "Tasks", JsonSerializer.Serialize(accountant.Tasks, serializerOptions) },
+				{ "AddressBookAccessRights", JsonSerializer.Serialize(accountant.AddressBookAccessRights, serializerOptions) },
 			};
             todoTable.UpsertEntity(entity);
             return new OkObjectResult("OK");
@@ -121,10 +123,12 @@ namespace Toolblox.Ada.App.Functions
 			}
 			var serializerOptions = new JsonSerializerOptions().ConfigureAdaDtoInheritance();
 			var tasks = tableEntity.GetString("Tasks");
+			var addressBookAccessRights = tableEntity.GetString("AddressBookAccessRights");
 			return new Accountant
 			{
 				Name = tableEntity.GetString("Name"),
 				NearMainnet = tableEntity.GetString("NearMainnet"),
+				AddressBookUrl = tableEntity.GetString("AddressBookUrl"),
 				ContactInfo = tableEntity.GetString("ContactInfo"),
 				PublicKey = tableEntity.GetString("PublicKey"),
 				NearTestnet = tableEntity.GetString("NearTestnet"),
@@ -139,10 +143,13 @@ namespace Toolblox.Ada.App.Functions
 				DeployedAt = tableEntity.GetDateTimeOffset("DeployedAt").GetValueOrDefault(),
                 ActivatedAt = tableEntity.GetDateTimeOffset("ActivatedAt").GetValueOrDefault(),
 				EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep"),
-                Tasks = tasks == null
-	                ? new List<AccountingTaskBase>()
-	                : JsonSerializer.Deserialize<List<AccountingTaskBase>>(tasks, serializerOptions)!
-            };
+				Tasks = tasks == null
+					? new List<AccountingTaskBase>()
+					: JsonSerializer.Deserialize<List<AccountingTaskBase>>(tasks, serializerOptions)!,
+				AddressBookAccessRights = addressBookAccessRights == null
+					? new List<ContentAccessRight>()
+					: JsonSerializer.Deserialize<List<ContentAccessRight>>(addressBookAccessRights, serializerOptions)!
+			};
         }
     }
 }
