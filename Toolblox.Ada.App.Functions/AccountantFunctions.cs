@@ -13,7 +13,11 @@ using Microsoft.Azure.Amqp.Serialization;
 using Toolblox.Ada.App.Functions.Helpers;
 using Toolblox.Ada.App.Functions.Services;
 using Toolblox.Ada.App.Model;
+using Toolblox.Cryptography;
 using Toolblox.Model;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
+using Microsoft.Azure.Amqp.Framing;
 
 namespace Toolblox.Ada.App.Functions
 {
@@ -78,27 +82,47 @@ namespace Toolblox.Ada.App.Functions
 			};
             todoTable.UpsertEntity(entity);
             return new OkObjectResult("OK");
-        }
+		}
 
         [FunctionName("DeleteAccountant")]
         public static async Task<IActionResult> DeleteAccountant(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "Accountant/Delete")] HttpRequestMessage req,
-            [Table("Accountants")] TableClient todoTable,
-            ILogger log)
+	        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "Accountant/Delete")] HttpRequestMessage req,
+	        [Table("Accountants")] TableClient todoTable,
+	        ILogger log)
         {
-            var query = req.RequestUri.ParseQueryString();
-            var id = query.Get("id");
-            var userId = await Security.GetUser(req);
-            var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{userId.Sanitize()}' and RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
-            if (tableEntity == null)
-            {
-                return new NotFoundObjectResult(null);
-            }
-            await todoTable.DeleteEntityAsync(tableEntity.PartitionKey, tableEntity.RowKey);
-            return new OkObjectResult("OK");
+	        var query = req.RequestUri.ParseQueryString();
+	        var id = query.Get("id");
+	        var userId = await Security.GetUser(req);
+	        var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{userId.Sanitize()}' and RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
+	        if (tableEntity == null)
+	        {
+		        return new NotFoundObjectResult(null);
+	        }
+	        await todoTable.DeleteEntityAsync(tableEntity.PartitionKey, tableEntity.RowKey);
+	        return new OkObjectResult("OK");
+		}
+
+        [FunctionName("GeneratePublicKey")]
+        public static async Task<IActionResult> GeneratePublicKey(
+	        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "Accountant/GeneratePublicKey")] HttpRequestMessage req,
+	        [Table("Accountants")] TableClient todoTable,
+	        ILogger log)
+        {
+	        var query = req.RequestUri.ParseQueryString();
+	        var id = query.Get("id");
+	        var userId = await Security.GetUser(req);
+	        var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{userId.Sanitize()}' and RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
+	        if (tableEntity == null)
+	        {
+		        return new NotFoundObjectResult(null);
+			}
+			var newKeyPair = new Mnemonic().GetKeyPair(id);
+			var client = new SecretClient(vaultUri: new Uri("https://adaaddressbookkeys.vault.azure.net/"), credential: new DefaultAzureCredential());
+			await client.SetSecretAsync(new KeyVaultSecret($"ada{id}".Replace("-", ""), newKeyPair.Serialize()));
+			return new OkObjectResult(newKeyPair.PublicKey);
         }
 
-        [FunctionName("AccountantById")]
+		[FunctionName("AccountantById")]
         public static async Task<IActionResult> AccountantById(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "Accountant/GetById")] HttpRequestMessage req,
             [Table("Accountants")] TableClient todoTable,
