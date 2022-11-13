@@ -18,6 +18,11 @@ using Toolblox.Model;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.Azure.Amqp.Framing;
+using System.IO;
+using Azure.Storage.Blobs;
+using System.Reflection.Metadata;
+using System.Collections;
+using Azure.Storage.Blobs.Models;
 
 namespace Toolblox.Ada.App.Functions
 {
@@ -36,7 +41,7 @@ namespace Toolblox.Ada.App.Functions
                 : $"IsPublic and IsDeployed";
 
             var pages = await todoTable.QueryAsync<TableEntity>(filter: filter).AsPages().ToListAsync();
-            var workflows = pages.SelectMany(x => x.Values).Select(ToAccountant).ToList();
+            var workflows = pages.SelectMany(x => x.Values).Select(TableEntityExtensions.ToAccountant).ToList();
 
             return new SystemTextJsonResult(workflows);
         }
@@ -77,6 +82,8 @@ namespace Toolblox.Ada.App.Functions
 				{ "ModifiedAt", DateTimeOffset.Now },
 				{ "DeployedAt", accountant.DeployedAt },
 				{ "ContactInfo", accountant.ContactInfo },
+				{ "Contract", accountant.Contract },
+				{ "Logo", accountant.Logo },
 				{ "Tasks", JsonSerializer.Serialize(accountant.Tasks, serializerOptions) },
 				{ "AddressBookAccessRights", JsonSerializer.Serialize(accountant.AddressBookAccessRights, serializerOptions) },
 			};
@@ -131,49 +138,44 @@ namespace Toolblox.Ada.App.Functions
             var query = req.RequestUri.ParseQueryString();
             var id = query.Get("id");
             var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
-            var workflowMetadata = ToAccountant(tableEntity);
+            var workflowMetadata = tableEntity.ToAccountant();
             if (workflowMetadata == null)
             {
                 return new EmptyResult();
             }
             return new SystemTextJsonResult(workflowMetadata);
-        }
+		}
 
-        private static Accountant ToAccountant(TableEntity tableEntity)
+        [FunctionName("UploadLogo")]
+        public static async Task<IActionResult> UploadLogo(
+	        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "UploadLogo")] HttpRequestMessage req,
+	        [Table("Accountants")] TableClient todoTable,
+			ILogger log)
         {
-            if (tableEntity == null)
-            {
-                return null;
-			}
-			var serializerOptions = new JsonSerializerOptions().ConfigureAdaDtoInheritance();
-			var tasks = tableEntity.GetString("Tasks");
-			var addressBookAccessRights = tableEntity.GetString("AddressBookAccessRights");
-			return new Accountant
+	        log.LogInformation("C# HTTP trigger function processed a request.");
+	        var query = req.RequestUri.ParseQueryString();
+			var id = query.Get("id");
+			var userId = await Security.GetUser(req);
+			var tableEntity = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{userId.Sanitize()}' and RowKey eq '{id.Sanitize()}'").FirstOrDefaultAsync();
+			if (tableEntity == null)
 			{
-				Name = tableEntity.GetString("Name"),
-				NearMainnet = tableEntity.GetString("NearMainnet"),
-				AddressBookUrl = tableEntity.GetString("AddressBookUrl"),
-				ContactInfo = tableEntity.GetString("ContactInfo"),
-				PublicKey = tableEntity.GetString("PublicKey"),
-				NearTestnet = tableEntity.GetString("NearTestnet"),
-				SelectedBlockchainKind = (BlockchainKind)tableEntity.GetInt32("SelectedBlockchainKind").GetValueOrDefault(),
-				SelectedChain = (Blockchain)tableEntity.GetInt32("SelectedChain").GetValueOrDefault(),
-				Id = Guid.TryParse(tableEntity.RowKey, out var id) ? id.ToString() : Guid.NewGuid().ToString(),
-                User = tableEntity.PartitionKey,
-                CreatedAt = tableEntity.GetDateTimeOffset("CreatedAt").GetValueOrDefault(),
-                ModifiedAt = tableEntity.GetDateTimeOffset("ModifiedAt").GetValueOrDefault(),
-                IsDeployed = tableEntity.GetBoolean("IsDeployed") ?? false,
-                IsActive = tableEntity.GetBoolean("IsActive") ?? false,
-				DeployedAt = tableEntity.GetDateTimeOffset("DeployedAt").GetValueOrDefault(),
-                ActivatedAt = tableEntity.GetDateTimeOffset("ActivatedAt").GetValueOrDefault(),
-				EditStep = (AccountantEditStep)tableEntity.GetInt32("EditStep"),
-				Tasks = tasks == null
-					? new List<AccountingTaskBase>()
-					: JsonSerializer.Deserialize<List<AccountingTaskBase>>(tasks, serializerOptions)!,
-				AddressBookAccessRights = addressBookAccessRights == null
-					? new List<ContentAccessRight>()
-					: JsonSerializer.Deserialize<List<ContentAccessRight>>(addressBookAccessRights, serializerOptions)!
-			};
+				return new NotFoundObjectResult(null);
+			}
+			var blobConnection = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+
+	        var content = await req.Content.ReadAsMultipartAsync();
+
+	        if (content.Contents.Count != 1 || content.Contents[0].Headers.ContentDisposition == null)
+	        {
+		        throw new ArgumentException("Content headers");
+	        }
+	        var fileName = content.Contents[0].Headers.ContentDisposition.FileName;
+			var blobClient = new BlobContainerClient(blobConnection, "ada-logos");
+			await blobClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
+			var logoFileName = $"{id.Replace("-", "")}{Guid.NewGuid().ToString().Substring(0, 8)}{fileName}";
+			var blob = blobClient.GetBlobClient(logoFileName);
+			await blob.UploadAsync(await content.Contents[0].ReadAsStreamAsync(), overwrite: true);
+			return new JsonResult(new { cid = blob.Uri.AbsoluteUri });
         }
-    }
+	}
 }
