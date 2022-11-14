@@ -17,8 +17,6 @@ const connectionConfig = {
 
 const tableStorageConnection = process.env["adawillhandlestorage_STORAGE"] || "";
 
-const tableName = `Invoices`;
-
 const queueTrigger: AzureFunction = async function (context: Context, myQueueItem: string): Promise<void> {
     context.log('Using private key', PRIVATE_KEY);
     // adds the keyPair you created to keyStore 
@@ -30,30 +28,56 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
         changeMethods: ['process', 'processExternal']
       });
 
-    const client = TableClient.fromConnectionString(tableStorageConnection, tableName);
-    const invoice = await client.getEntity<Invoice>(myQueueItem.split(':')[0], myQueueItem.split(':')[1]);
+    const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
+    let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
+    const invoice = await client.getEntity<Invoice>(accountantId, myQueueItem.split(':')[1]);
 
-    if (invoice.Id == undefined)
+    const accountantClient = TableClient.fromConnectionString(tableStorageConnection, `Accountants`);
+    const accountantList = accountantClient.listEntities<Accountant>({ 
+      queryOptions: { 
+        filter: `Contract eq "${accountantId}"`, 
+      }, 
+    });
+    let accountant : Accountant = undefined;
+    for await (const accountantLine of accountantList) {
+      accountant = accountantLine;
+      break;
+    }
+    if (accountant == undefined)
     {
-      //processExternal
-      var item = await contract.processExternal({ "id" : 1 });
+      throw new Error('Cannot find accountant with id ' + accountantId);
+    }
+
+    let processFee: number = accountant.ProcessFee;
+    
+    if (invoice.InvoiceNr == undefined)
+    {
+      throw new Error('External processing not implemented yet');
+      //var item = await contract.processExternal({ "id" : 1 });
     }else{
       //process
-      await contract.process({ "id" : Number(invoice.Id), "receipt": invoice.rowKey, "processFee" : Number(1).toString() });
+      await contract.process({ "id" : Number(invoice.InvoiceNr), "receipt": invoice.rowKey, "processFee" : processFee.toString() });
     }
 
     invoice.ProcessedAt = new Date();
+    invoice.ProcessFee = processFee;
     await client.upsertEntity(invoice, "Merge");
 
     context.bindings.outQueueItem = myQueueItem;
 };
 
 interface Invoice {
-    partitionKey: string;
-    rowKey: string;
-    Id : bigint;
-    CreatedAt: Date;
-    ProcessedAt: Date;
-  }
-
+  partitionKey: string;
+  rowKey: string;
+  InvoiceNr : bigint;
+  CreatedAt: Date;
+  ProcessedAt: Date;
+  IsFiat: boolean;
+  ProcessFee: number;
+}
+interface Accountant {
+  partitionKey: string;
+  rowKey: string;
+  ProcessFee: number;
+}
 export default queueTrigger;

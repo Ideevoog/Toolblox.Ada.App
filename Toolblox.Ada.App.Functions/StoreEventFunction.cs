@@ -204,7 +204,7 @@ namespace Toolblox.Ada.App.Functions
                     log.LogInformation($"C# Event Hub trigger function processed a message: {JsonConvert.SerializeObject(invoice, Formatting.Indented)}");
                     
                     invoicesToProcess.Add($"{invoice.Contract}:{invoice.ReceiptId}");
-
+                    var currencyIso = invoice.Currency?.ToUpper();
                     actions.Add(new TableTransactionAction(
                         TableTransactionActionType.UpsertReplace,
                         new TableEntity(invoice.Contract, invoice.ReceiptId)
@@ -212,8 +212,9 @@ namespace Toolblox.Ada.App.Functions
 							{ "InvoiceNr", invoice.Id },
 							{ "From", invoice.From },
 							{ "To", invoice.To },
-                            { "Article", invoice.Article },
-                            { "Currency", invoice.Currency?.ToUpper() },
+							{ "Article", invoice.Article },
+							{ "IsFiat", Invoice.CheckIfFiat(currencyIso) },
+							{ "Currency", currencyIso },
                             { "AmountString", invoice.Amount },
                             { "CreatedAt", DateTimeOffset.Now },
                             { "ProcessedAt", (DateTimeOffset?)null },

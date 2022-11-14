@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using Azure.Data.Tables;
 using Toolblox.Ada.App.Model;
 using Toolblox.Model;
@@ -70,6 +67,8 @@ namespace Toolblox.Ada.App.Functions.Helpers
 				Error = tableEntity.GetString("Error"),
 				CreatedAt = tableEntity.GetDateTimeOffset("CreatedAt").GetValueOrDefault(),
 				ProcessedAt = tableEntity.GetDateTimeOffset("ModifiedAt"),
+				IsFiat = tableEntity.GetBoolean("IsFiat").GetValueOrDefault(),
+				ProcessFee = tableEntity.GetInt64("ProcessFee"),
 				AutomationFinishedAt = tableEntity.GetDateTimeOffset("ModifiedAt"),
 			};
 			if (BigInteger.TryParse(invoice.AmountString, out var amount))
