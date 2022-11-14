@@ -63,6 +63,7 @@ namespace Toolblox.Ada.App.Functions.Helpers
 				Contract = tableEntity.RowKey,
 				From = tableEntity.GetString("From"),
 				To = tableEntity.GetString("To"),
+				InvoiceNr = tableEntity.GetInt64("InvoiceNr"),
 				Article = tableEntity.GetString("Article"),
 				Currency = tableEntity.GetString("Currency"),
 				AmountString = tableEntity.GetString("Amount"),
