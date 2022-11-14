@@ -23,19 +23,19 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     await myKeyStore.setKey("testnet", "silverdemo2.testnet", keyPair);
     const nearConnection = await connect(connectionConfig);
     const account = await nearConnection.account("silverdemo2.testnet");
-    const contract = new nearAPI.Contract(account, 'invoice-workflow-123.testnet', {
-        viewMethods: ['getItem'],
-        changeMethods: ['process', 'processExternal']
-      });
 
     const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
     let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
+    const contract = new nearAPI.Contract(account, accountantId, {
+        viewMethods: ['getItem'],
+        changeMethods: ['process', 'processExternal']
+      });
     const invoice = await client.getEntity<Invoice>(accountantId, myQueueItem.split(':')[1]);
 
     const accountantClient = TableClient.fromConnectionString(tableStorageConnection, `Accountants`);
     const accountantList = accountantClient.listEntities<Accountant>({ 
       queryOptions: { 
-        filter: `Contract eq "${accountantId}"`, 
+        filter: `Contract eq '${accountantId}'`, 
       }, 
     });
     let accountant : Accountant = undefined;
