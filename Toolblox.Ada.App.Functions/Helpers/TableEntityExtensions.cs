@@ -58,6 +58,8 @@ namespace Toolblox.Ada.App.Functions.Helpers
 			{
 				Id = Guid.TryParse(tableEntity.RowKey, out var id) ? id.ToString() : Guid.NewGuid().ToString(),
 				Contract = tableEntity.RowKey,
+				AlternativeCurrency = tableEntity.GetString("AlternativeCurrency"),
+				AlternativeFxValue = tableEntity.GetString("AlternativeFxValue"),
 				From = tableEntity.GetString("From"),
 				To = tableEntity.GetString("To"),
 				InvoiceNr = tableEntity.GetInt64("InvoiceNr"),

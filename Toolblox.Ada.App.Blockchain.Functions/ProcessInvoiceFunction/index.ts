@@ -49,6 +49,25 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     }
 
     let processFee: number = accountant.ProcessFee;
+
+    var alternativeCurrency = invoice.AlternativeCurrency;
+    var alternativeFxValue = invoice.AlternativeFxValue;
+
+    //todo get alternative currency
+    if (!invoice.IsFiat)
+    {
+      if (invoice.Currency == "NEAR")
+      {
+        //get multiplier for wrap.testnet
+        const oracleContract = new nearAPI.Contract(account, "priceoracle.testnet", {
+          viewMethods: ['get_price_data'],
+          changeMethods: []
+        });
+        var multiplier = (await oracleContract.get_price_data({ "asset_ids": ["wrap.testnet"] })).prices[0].price.multiplier;
+        alternativeFxValue = (Number(multiplier.toString()) / 10000).toString();
+        alternativeCurrency = "USD";
+      }
+    }
     
     if (invoice.InvoiceNr == undefined)
     {
@@ -61,6 +80,8 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
 
     invoice.ProcessedAt = new Date();
     invoice.ProcessFee = processFee;
+    invoice.AlternativeCurrency = alternativeCurrency;
+    invoice.AlternativeFxValue = alternativeFxValue;
     await client.upsertEntity(invoice, "Merge");
 
     context.bindings.outQueueItem = myQueueItem;
@@ -74,6 +95,9 @@ interface Invoice {
   ProcessedAt: Date;
   IsFiat: boolean;
   ProcessFee: number;
+  Currency : string;
+  AlternativeCurrency : string;
+  AlternativeFxValue : string;
 }
 interface Accountant {
   partitionKey: string;
