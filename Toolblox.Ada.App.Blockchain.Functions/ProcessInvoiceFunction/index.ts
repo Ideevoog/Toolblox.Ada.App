@@ -20,9 +20,9 @@ const tableStorageConnection = process.env["adawillhandlestorage_STORAGE"] || ""
 const queueTrigger: AzureFunction = async function (context: Context, myQueueItem: string): Promise<void> {
     context.log('Using private key', PRIVATE_KEY);
     // adds the keyPair you created to keyStore 
-    await myKeyStore.setKey("testnet", "silverdemo2.testnet", keyPair);
+    await myKeyStore.setKey("testnet", "accountant-ada.testnet", keyPair);
     const nearConnection = await connect(connectionConfig);
-    const account = await nearConnection.account("silverdemo2.testnet");
+    const account = await nearConnection.account("accountant-ada.testnet");
 
     const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
     let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
