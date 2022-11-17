@@ -170,7 +170,7 @@ namespace Toolblox.Ada.App.Functions
 
 					byte[] pdf = null;
 					var seller = contacts.FindContact(invoice.From);
-					var buyer = contacts.FindContact(invoice.To);
+					var buyer = contacts.FindContact(invoice.To, false);
 					if (accountant.Tasks.Any())
 					{
 						pdf = BuildPdf(invoice, seller, buyer);
