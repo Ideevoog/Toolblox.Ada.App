@@ -289,6 +289,7 @@ namespace Toolblox.Ada.App.Functions
 							{ "IsFiat", Invoice.CheckIfFiat(currencyIso) },
 							{ "Currency", currencyIso },
 							{ "AmountString", invoice.Amount },
+							{ "Amount", invoice.Amount },
 							{ "CreatedAt", DateTimeOffset.Now },
 							{ "ProcessedAt", (DateTimeOffset?)null },
 							{ "AutomationFinishedAt", (DateTimeOffset?)null },
