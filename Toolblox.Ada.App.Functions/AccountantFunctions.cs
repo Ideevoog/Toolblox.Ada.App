@@ -83,6 +83,7 @@ namespace Toolblox.Ada.App.Functions
 				{ "DeployedAt", accountant.DeployedAt },
 				{ "ContactInfo", accountant.ContactInfo },
 				{ "Contract", accountant.Contract },
+				{ "Workflow", accountant.Workflow },
 				{ "Logo", accountant.Logo },
 				{ "ProcessFee", accountant.ProcessFee },
 				{ "Tasks", JsonSerializer.Serialize(accountant.Tasks, serializerOptions) },

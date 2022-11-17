@@ -113,7 +113,7 @@ namespace Toolblox.Ada.App.Functions
 
 			var invoiceEntity = await invoiceTable.GetEntityAsync<TableEntity>(partitionKey, rowKey);
 
-			if (invoiceEntity == null || (partitionKey != accountant.Contract && partitionKey != accountant.GetAddress()))
+			if (invoiceEntity == null || (partitionKey != accountant.Contract && partitionKey != accountant.Workflow))
 			{
 				throw new Exception("Invoice not found");
 			}
@@ -148,7 +148,7 @@ namespace Toolblox.Ada.App.Functions
 			try
 			{
 				var invoice = invoiceEntity.ToInvoice();
-				var accountantEntity = await accountantsTable.QueryAsync<TableEntity>(filter: $"Contract eq '{adaContract.Sanitize()}'").ToListAsync();
+				var accountantEntity = await accountantsTable.QueryAsync<TableEntity>(filter: $"Contract eq '{adaContract.Sanitize()}' or Workflow eq '{adaContract.Sanitize()}'").ToListAsync();
 				if (!accountantEntity.Any())
 				{
 					throw new Exception("No accountants found to process invoice: " + invoiceKey);
@@ -256,7 +256,6 @@ namespace Toolblox.Ada.App.Functions
 
 #if !DEBUG
         [FunctionName("InvoiceFunction")]
-#endif
 		public async Task Run(
 			[EventHubTrigger("invoiceevent", Connection = "EventHub")] EventData[] events,
 			[Table("Invoices")] TableClient todoTable,
@@ -319,5 +318,6 @@ namespace Toolblox.Ada.App.Functions
 			if (exceptions.Count == 1)
 				throw exceptions.Single();
 		}
+#endif
 	}
 }

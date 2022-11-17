@@ -35,7 +35,7 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     const accountantClient = TableClient.fromConnectionString(tableStorageConnection, `Accountants`);
     const accountantList = accountantClient.listEntities<Accountant>({ 
       queryOptions: { 
-        filter: `Contract eq '${accountantId}'`, 
+        filter: `Contract eq '${accountantId}' or Workflow eq '${accountantId}'`, 
       }, 
     });
     let accountant : Accountant = undefined;
@@ -71,8 +71,9 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     
     if (invoice.InvoiceNr == undefined)
     {
-      throw new Error('External processing not implemented yet');
-      //var item = await contract.processExternal({ "id" : 1 });
+      var item = await contract.processExternal({ "name" : invoice.Article, "amount" : invoice.Amount, "currency" : invoice.Currency, "from" : invoice.From, "to" : invoice.To, "receipt" : invoice.rowKey, "processFee" : processFee.toString() });
+      var itemId = item.id;
+      invoice.InvoiceNr = itemId;
     }else{
       //process
       await contract.process({ "id" : Number(invoice.InvoiceNr), "receipt": invoice.rowKey, "processFee" : processFee.toString() });
@@ -96,7 +97,11 @@ interface Invoice {
   rowKey: string;
   InvoiceNr : bigint;
   CreatedAt: Date;
+  From : string;
+  To : string;
+  Article : string;
   ProcessedAt: Date;
+  Amount : string;
   IsFiat: boolean;
   ProcessFee: number;
   Error: string;
