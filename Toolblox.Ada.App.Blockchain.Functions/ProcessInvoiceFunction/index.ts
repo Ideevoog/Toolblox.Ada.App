@@ -18,20 +18,20 @@ const connectionConfig = {
 const tableStorageConnection = process.env["adawillhandlestorage_STORAGE"] || "";
 
 const queueTrigger: AzureFunction = async function (context: Context, myQueueItem: string): Promise<void> {
-    context.log('Using private key', PRIVATE_KEY);
-    // adds the keyPair you created to keyStore 
-    await myKeyStore.setKey("testnet", "accountant-ada.testnet", keyPair);
-    const nearConnection = await connect(connectionConfig);
-    const account = await nearConnection.account("accountant-ada.testnet");
+  // adds the keyPair you created to keyStore 
+  await myKeyStore.setKey("testnet", "accountant-ada.testnet", keyPair);
+  const nearConnection = await connect(connectionConfig);
+  const account = await nearConnection.account("accountant-ada.testnet");
 
-    const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
-    let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
-    const contract = new nearAPI.Contract(account, accountantId, {
-        viewMethods: ['getItem'],
-        changeMethods: ['process', 'processExternal']
-      });
-    const invoice = await client.getEntity<Invoice>(accountantId, myQueueItem.split(':')[1]);
+  const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
+  let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
+  const contract = new nearAPI.Contract(account, accountantId, {
+      viewMethods: ['getItem'],
+      changeMethods: ['process', 'processExternal']
+    });
+  const invoice = await client.getEntity<Invoice>(accountantId, myQueueItem.split(':')[1]);
 
+  try {
     const accountantClient = TableClient.fromConnectionString(tableStorageConnection, `Accountants`);
     const accountantList = accountantClient.listEntities<Accountant>({ 
       queryOptions: { 
@@ -80,11 +80,15 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
 
     invoice.ProcessedAt = new Date();
     invoice.ProcessFee = processFee;
+    invoice.Error = '';
     invoice.AlternativeCurrency = alternativeCurrency;
     invoice.AlternativeFxValue = alternativeFxValue;
     await client.upsertEntity(invoice, "Merge");
-
     context.bindings.outQueueItem = myQueueItem;
+  } catch (error) {
+    invoice.Error = error;
+    await client.upsertEntity(invoice, "Merge");
+  }
 };
 
 interface Invoice {
@@ -95,6 +99,7 @@ interface Invoice {
   ProcessedAt: Date;
   IsFiat: boolean;
   ProcessFee: number;
+  Error: string;
   Currency : string;
   AlternativeCurrency : string;
   AlternativeFxValue : string;
