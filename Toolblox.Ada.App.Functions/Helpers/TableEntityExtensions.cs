@@ -56,7 +56,7 @@ namespace Toolblox.Ada.App.Functions.Helpers
 			}
 			var invoice = new Invoice
 			{
-				Id = Guid.TryParse(tableEntity.RowKey, out var id) ? id.ToString() : Guid.NewGuid().ToString(),
+				Id = $"{tableEntity.PartitionKey}:{tableEntity.RowKey}",
 				Contract = tableEntity.RowKey,
 				AlternativeCurrency = tableEntity.GetString("AlternativeCurrency"),
 				AlternativeFxValue = tableEntity.GetString("AlternativeFxValue"),
