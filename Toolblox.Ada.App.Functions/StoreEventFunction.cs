@@ -77,7 +77,7 @@ namespace Toolblox.Ada.App.Functions
 				throw new Exception("Cannot find accountant");
 			}
 
-			var invoiceEntities = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{accountant.Contract.Sanitize()}'").ToListAsync();
+			var invoiceEntities = await todoTable.QueryAsync<TableEntity>(filter: $"PartitionKey eq '{accountant.Contract?.Sanitize()}' or PartitionKey eq '{accountant.Workflow?.Sanitize()}'").ToListAsync();
 
 			var invoices = invoiceEntities.Select(TableEntityExtensions.ToInvoice).ToList();
 
