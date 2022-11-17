@@ -68,10 +68,10 @@ namespace Toolblox.Ada.App.Functions.Helpers
 				AmountString = tableEntity.GetString("Amount"),
 				Error = tableEntity.GetString("Error"),
 				CreatedAt = tableEntity.GetDateTimeOffset("CreatedAt").GetValueOrDefault(),
-				ProcessedAt = tableEntity.GetDateTimeOffset("ModifiedAt"),
+				ProcessedAt = tableEntity.GetDateTimeOffset("ProcessedAt"),
 				IsFiat = tableEntity.GetBoolean("IsFiat").GetValueOrDefault(),
 				ProcessFee = tableEntity.GetInt64("ProcessFee"),
-				AutomationFinishedAt = tableEntity.GetDateTimeOffset("ModifiedAt"),
+				AutomationFinishedAt = tableEntity.GetDateTimeOffset("AutomationFinishedAt"),
 			};
 			if (BigInteger.TryParse(invoice.AmountString, out var amount))
 			{
