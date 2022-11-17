@@ -23,6 +23,7 @@ namespace Toolblox.Ada.App.Functions.Helpers
 			{
 				Name = tableEntity.GetString("Name"),
 				NearMainnet = tableEntity.GetString("NearMainnet"),
+				Contract = tableEntity.GetString("Contract"),
 				Logo = tableEntity.GetString("Logo"),
 				AddressBookUrl = tableEntity.GetString("AddressBookUrl"),
 				ContactInfo = tableEntity.GetString("ContactInfo"),
