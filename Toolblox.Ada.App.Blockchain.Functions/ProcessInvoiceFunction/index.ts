@@ -1,5 +1,5 @@
 import { AzureFunction, Context } from "@azure/functions";
-import { TableClient } from "@azure/data-tables";
+import { Edm, TableClient } from "@azure/data-tables";
 const nearAPI = require("near-api-js");
 const { keyStores, KeyPair, connect  } = nearAPI;
 const myKeyStore = new keyStores.InMemoryKeyStore();
@@ -71,11 +71,13 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     
     if (invoice.InvoiceNr == undefined)
     {
+      console.log("Running processExternal");
       var item = await contract.processExternal({ "name" : invoice.Article, "amount" : invoice.Amount, "currency" : invoice.Currency, "from" : invoice.From, "to" : invoice.To, "receipt" : invoice.rowKey, "processFee" : processFee.toString() });
       var itemId = item.id;
-      invoice.InvoiceNr = itemId;
+      invoice.InvoiceNr = BigInt(itemId);
     }else{
       //process
+      console.log("Running process for invoice " + invoice.InvoiceNr);
       await contract.process({ "id" : Number(invoice.InvoiceNr), "receipt": invoice.rowKey, "processFee" : processFee.toString() });
     }
 
@@ -95,7 +97,7 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
 interface Invoice {
   partitionKey: string;
   rowKey: string;
-  InvoiceNr : bigint;
+  InvoiceNr? : bigint;
   CreatedAt: Date;
   From : string;
   To : string;
