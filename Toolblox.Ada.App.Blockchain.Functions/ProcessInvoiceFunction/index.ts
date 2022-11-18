@@ -25,10 +25,6 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
 
   const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
   let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
-  const contract = new nearAPI.Contract(account, accountantId, {
-      viewMethods: ['getItem'],
-      changeMethods: ['process', 'processExternal']
-    });
   const invoice = await client.getEntity<Invoice>(accountantId, myQueueItem.split(':')[1]);
 
   try {
@@ -48,13 +44,18 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
       throw new Error('Cannot find accountant with id ' + accountantId);
     }
 
+    const contract = new nearAPI.Contract(account, accountant.Workflow, {
+        viewMethods: ['getItem'],
+        changeMethods: ['process', 'processExternal']
+      });
+
     let processFee: number = accountant.ProcessFee;
 
     var alternativeCurrency = invoice.AlternativeCurrency;
     var alternativeFxValue = invoice.AlternativeFxValue;
 
     //todo get alternative currency
-    if (!invoice.IsFiat)
+    if (!invoice.IsFiat && invoice.AlternativeFxValue == undefined)
     {
       if (invoice.Currency == "NEAR")
       {
@@ -69,16 +70,19 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
       }
     }
     
-    if (invoice.InvoiceNr == undefined)
+    if (invoice.ProcessedAt == undefined)
     {
-      console.log("Running processExternal");
-      var item = await contract.processExternal({ "name" : invoice.Article, "amount" : invoice.Amount, "currency" : invoice.Currency, "from" : invoice.From, "to" : invoice.To, "receipt" : invoice.rowKey, "processFee" : processFee.toString() });
-      var itemId = item.id;
-      invoice.InvoiceNr = BigInt(itemId);
-    }else{
-      //process
-      console.log("Running process for invoice " + invoice.InvoiceNr);
-      await contract.process({ "id" : Number(invoice.InvoiceNr), "receipt": invoice.rowKey, "processFee" : processFee.toString() });
+      if (invoice.InvoiceNr == undefined)
+      {
+        console.log("Running processExternal");
+        var item = await contract.processExternal({ "name" : invoice.Article, "amount" : invoice.Amount, "currency" : invoice.Currency, "from" : invoice.From, "to" : invoice.To, "receipt" : invoice.rowKey, "processFee" : processFee.toString() });
+        var itemId = item.id;
+        invoice.InvoiceNr = BigInt(itemId);
+      }else{
+        //process
+        console.log("Running process for invoice " + invoice.InvoiceNr);
+        await contract.process({ "id" : Number(invoice.InvoiceNr), "receipt": invoice.rowKey, "processFee" : processFee.toString() });
+      }
     }
 
     invoice.ProcessedAt = new Date();
@@ -89,8 +93,13 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     await client.upsertEntity(invoice, "Merge");
     context.bindings.outQueueItem = myQueueItem;
   } catch (error) {
-    invoice.Error = error;
-    await client.upsertEntity(invoice, "Merge");
+    const errorEntity = {
+      partitionKey: invoice.partitionKey,
+      rowKey: invoice.rowKey,
+      Error: error.toString(),
+    };
+    await client.upsertEntity(errorEntity, "Merge");
+    throw error;
   }
 };
 
@@ -99,21 +108,22 @@ interface Invoice {
   rowKey: string;
   InvoiceNr? : bigint;
   CreatedAt: Date;
-  From : string;
-  To : string;
-  Article : string;
-  ProcessedAt: Date;
-  Amount : string;
-  IsFiat: boolean;
-  ProcessFee: number;
-  Error: string;
-  Currency : string;
-  AlternativeCurrency : string;
-  AlternativeFxValue : string;
+  From? : string;
+  To? : string;
+  Article? : string;
+  ProcessedAt?: Date;
+  Amount? : string;
+  IsFiat?: boolean;
+  ProcessFee?: number;
+  Error? : string;
+  Currency? : string;
+  AlternativeCurrency? : string;
+  AlternativeFxValue? : string;
 }
 interface Accountant {
   partitionKey: string;
   rowKey: string;
   ProcessFee: number;
+  Workflow: string;
 }
 export default queueTrigger;

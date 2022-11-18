@@ -89,7 +89,7 @@ namespace Toolblox.Ada.App.Functions
 			[HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "Invoice/Reprocess")] HttpRequestMessage req,
 			[Table("Accountants")] TableClient accountantsTable,
 			[Table("Invoices")] TableClient invoiceTable,
-			[Queue("invoices-to-automate")] ICollector<string> invoicesToAutomate,
+			[Queue("invoices-to-process")] ICollector<string> invoicesToProcess,
 			ILogger log)
 		{
 			log.LogInformation("C# HTTP trigger function processed a request.");
@@ -118,7 +118,7 @@ namespace Toolblox.Ada.App.Functions
 				throw new Exception("Invoice not found");
 			}
 
-			invoicesToAutomate.Add(invoiceId);
+			invoicesToProcess.Add(invoiceId);
 
 			return new OkObjectResult("Started");
 		}
