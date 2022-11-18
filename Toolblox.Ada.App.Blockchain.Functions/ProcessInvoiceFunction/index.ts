@@ -72,7 +72,7 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
     
     if (invoice.ProcessedAt == undefined)
     {
-      if (invoice.InvoiceNr == undefined)
+      if (invoice.InvoiceNr == undefined || Number(invoice.InvoiceNr) == 0)
       {
         console.log("Running processExternal");
         var item = await contract.processExternal({ "name" : invoice.Article, "amount" : invoice.Amount, "currency" : invoice.Currency, "from" : invoice.From, "to" : invoice.To, "receipt" : invoice.rowKey, "processFee" : processFee.toString() });
