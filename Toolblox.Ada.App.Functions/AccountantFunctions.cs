@@ -9,19 +9,13 @@ using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.Azure.Amqp.Serialization;
 using Toolblox.Ada.App.Functions.Helpers;
 using Toolblox.Ada.App.Functions.Services;
 using Toolblox.Ada.App.Model;
 using Toolblox.Cryptography;
-using Toolblox.Model;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Microsoft.Azure.Amqp.Framing;
-using System.IO;
 using Azure.Storage.Blobs;
-using System.Reflection.Metadata;
-using System.Collections;
 using Azure.Storage.Blobs.Models;
 
 namespace Toolblox.Ada.App.Functions
@@ -31,6 +25,7 @@ namespace Toolblox.Ada.App.Functions
 	    [FunctionName("Accountants")]
         public static async Task<IActionResult> Accountants(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", "post", Route = "Accountant/List")] HttpRequestMessage req,
+            [Table("Invoices")] TableClient invoiceTable,
             [Table("Accountants")] TableClient todoTable,
             ILogger log)
         {
@@ -41,9 +36,19 @@ namespace Toolblox.Ada.App.Functions
                 : $"IsPublic and IsDeployed";
 
             var pages = await todoTable.QueryAsync<TableEntity>(filter: filter).AsPages().ToListAsync();
-            var workflows = pages.SelectMany(x => x.Values).Select(TableEntityExtensions.ToAccountant).ToList();
+            var accountants = pages.SelectMany(x => x.Values).Select(TableEntityExtensions.ToAccountant).ToList();
 
-            return new SystemTextJsonResult(workflows);
+            var invoices = await invoiceTable.QueryAsync<TableEntity>(select: new List<string> { "PartitionKey" }).ToListAsync();
+            var invoiceCounts = invoices
+	            .ToLookup(x => x.GetString("PartitionKey"));
+
+            foreach (var accountant in accountants.Where(x => x.IsActive))
+            {
+	            accountant.InvoiceCount = invoiceCounts[accountant.Contract].Count() +
+	                                      (accountant.Workflow != accountant.Contract ? invoiceCounts[accountant.Workflow].Count() : 0);
+            }
+
+            return new SystemTextJsonResult(accountants);
         }
 
         [FunctionName("UpsertAccountant")]
