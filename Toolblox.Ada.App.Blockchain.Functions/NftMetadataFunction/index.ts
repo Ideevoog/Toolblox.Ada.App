@@ -8,9 +8,25 @@ const myKeyStore = new keyStores.InMemoryKeyStore();
 const tableStorageConnection = process.env["toolblox_STORAGE"] || "";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    const client = TableClient.fromConnectionString(tableStorageConnection, `Workflows`);
-    const workflow = await client.getEntity<Workflow>("testnet", req.query.workflowId);
     const itemId = req.query.id;
+    const workflowUrl = req.query.workflowId.replace(/['"-]/g, "");
+    console.log("=============== req initiated for item: " + itemId + ", workflow: " + workflowUrl + ", url: " + req.url + ", query: " + req.query);
+    const client = TableClient.fromConnectionString(tableStorageConnection, `Workflows`);
+    const workflowList = client.listEntities<Workflow>({
+        queryOptions: {
+            filter: `Url eq '${workflowUrl}'`,
+            select: [ "Project", "Object", "SelectedChain", "SelectedBlockchainKind", "NearTestnet", "NearMainnet" ]
+        },
+    });
+    let workflow: Workflow = undefined;
+    for await (const workflowLine of workflowList) {
+        workflow = workflowLine;
+        break;
+    }
+    if (workflow == undefined) {
+        throw new Error('Cannot find workflow with url ' + workflowUrl);
+    }
+    //const workflow = await client.getEntity<Workflow>("testnet", req.query.workflowId);
     // adds the keyPair you created to keyStore
     let cid = "";
     let name = "";
