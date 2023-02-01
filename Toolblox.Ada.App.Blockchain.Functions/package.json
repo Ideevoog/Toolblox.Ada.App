@@ -12,6 +12,8 @@
   "dependencies": {
     "@azure/data-tables": "^13.2.0",
     "ethers": "^5.7.2",
+    "jsonwebtoken": "^9.0.0",
+    "jwks-rsa": "^3.0.1",
     "near-api-js": "^1.1.0",
     "redstone-api": "^0.4.11"
   },
