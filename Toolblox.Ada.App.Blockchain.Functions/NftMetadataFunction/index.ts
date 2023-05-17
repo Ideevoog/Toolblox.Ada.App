@@ -68,7 +68,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 throw "No selected chain!";
                 case 2:
                     network = workflow.SelectedBlockchainKind == 0
-                        ? "https://matic-testnet-archive-rpc.bwarelabs.com"
+                        ? "https://matic-mumbai.chainstacklabs.com"
                         : "https://polygon-rpc.com/";
                 break;
                 case 3:
@@ -90,6 +90,10 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                     network = workflow.SelectedBlockchainKind == 0
                         ? "https://goerli.infura.io/v3/"
                         : "https://mainnet.infura.io/v3/";
+                case 7:
+                    network = workflow.SelectedBlockchainKind == 0
+                        ? "https://data-seed-prebsc-2-s2.binance.org:8545/"
+                        : "https://bsc-dataseed.binance.org/";
                 case 1:
                 default:
                     break;
