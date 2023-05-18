@@ -136,7 +136,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 break;
                 case 6:
                     network = subscription.SelectedBlockchainKind == 0
-                        ? "https://ethereum-goerli-rpc.allthatnode.com/"
+                        ? "https://rpc.sepolia.dev"
                         : "https://mainnet.infura.io/v3/";
                     contractAddress = subscription.SelectedBlockchainKind == 0
                         ? ""
