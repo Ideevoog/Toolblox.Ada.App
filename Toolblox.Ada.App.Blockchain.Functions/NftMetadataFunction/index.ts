@@ -33,6 +33,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     let name = "";
     let description = "";
     let contractAddress = workflow.NearTestnet;
+    let traits = [];
     if (workflow.SelectedBlockchainKind == 1)
     {
         contractAddress = workflow.NearMainnet;
@@ -107,9 +108,38 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             //console.log("================ abi to parse: " + workflow.Abi);
             const abi = JSON.parse(workflow.Abi);
             const contract = new ethers.Contract(contractAddress, abi, new ethers.providers.JsonRpcProvider(network));
-            name = await contract.getName(itemId);
-            cid = await contract.getImage(itemId);
-            description = await contract.getDescription(itemId);
+            // var methods = abi
+            //     .filter(method => method.inputs !== undefined && method.inputs.length == 1 && method.inputs[0].name === "id")
+            //     .filter(method => method.outputs !== undefined && method.outputs.length == 1 && method.outputs[0].components === undefined)
+            //     .filter(method => method.name.startsWith("get"))
+            //     .map(method => method.name);
+
+            // for (let i = 0; i < methods.length; i++) {
+            //     traits.push({
+            //         trait_type : methods[i].name.replace(/get([A-Z])/g, ' $1').trim(),
+            //         value: await await contract[methods[i].name].apply(contract, [ itemId ]),
+            //     });
+            // }
+
+            var traitNames = abi
+                .filter(method => method.name === "getItem")
+                .flatMap(method => method.outputs[0].components)
+                .map(prop => prop.name.replace(/([A-Z])/g, ' $1').trim())
+                .map(prop => prop.charAt(0).toUpperCase() + prop.slice(1));
+            var traitValues = await contract.getItem(itemId);
+
+            for (let i = 0; i < traitNames.length; i++) {
+                traits.push({
+                    trait_type : traitNames[i],
+                    value: traitValues[i],
+                });
+            }
+            //console.log(JSON.stringify(traits));
+
+            name = traits.filter(t => t.trait_type == "Name")[0].value;
+            cid = traits.filter(t => t.trait_type == "Image")[0].value;
+            description = traits.filter(t => t.trait_type == "Description")[0].value;
+
             console.log("================== got " + name +", cid" + cid);
         }
         context.res = {
@@ -119,12 +149,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 description : description,
                 image : "ipfs://" + cid,
                 external_link : "https://app.toolblox.net/flow/" + req.query.workflowId + "/" + itemId,
-                // attributes: [
-                //     {
-                //       "trait_type": "Base", 
-                //       "value": "Starfish"
-                //     }
-                // ]
+                attributes: traits
             },
             headers: {
                 'Content-Type': 'application/json'
