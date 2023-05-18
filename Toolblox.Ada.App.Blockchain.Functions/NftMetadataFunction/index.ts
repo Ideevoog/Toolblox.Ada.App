@@ -30,6 +30,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     // adds the keyPair you created to keyStore
     let cid = "";
     let name = "";
+    let description = "";
     let contractAddress = workflow.NearTestnet;
     if (workflow.SelectedBlockchainKind == 1)
     {
@@ -61,6 +62,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             var item = await contract.getItem({ "id": itemId });
             cid = item.image;
             name = item.name;
+            description = item.description;
         } else {
             let network = "";
             switch (workflow.SelectedChain) {
@@ -68,7 +70,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 throw "No selected chain!";
                 case 2:
                     network = workflow.SelectedBlockchainKind == 0
-                        ? "https://matic-mumbai.chainstacklabs.com"
+                        ? "https://rpc-mumbai.maticvigil.com/"
                         : "https://polygon-rpc.com/";
                 break;
                 case 3:
@@ -88,7 +90,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 break;
                 case 6:
                     network = workflow.SelectedBlockchainKind == 0
-                        ? "https://goerli.infura.io/v3/"
+                        ? "https://rpc.sepolia.dev"
                         : "https://mainnet.infura.io/v3/";
                 case 7:
                     network = workflow.SelectedBlockchainKind == 0
@@ -98,19 +100,27 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 default:
                     break;
             }
-            const abi = JSON.parse('[{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getImage","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getStatus","outputs":[{"internalType":"uint64","name":"","type":"uint64"}],"stateMutability":"view","type":"function"}]');
+            const abi = JSON.parse('[{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getDescription","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getImage","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getStatus","outputs":[{"internalType":"uint64","name":"","type":"uint64"}],"stateMutability":"view","type":"function"}]');
             console.log("================ contract: " + contractAddress + ", workflowId : " + req.query.workflowId + ", network: " + network + ", itemId = " + itemId)
             const contract = new ethers.Contract(contractAddress, abi, new ethers.providers.JsonRpcProvider(network));
             name = await contract.getName(itemId);
             cid = await contract.getImage(itemId);
+            description = await contract.getDescription(itemId);
             console.log("================== got " + name +", cid" + cid);
         }
         context.res = {
             status: 200, /* Defaults to 200 */
             body: {
                 name : name,
-                description : "Item: " + workflow.Object + "; Workflow: " + workflow.Project,
-                image : "https://" + cid + ".ipfs.w3s.link"
+                description : description,
+                image : "https://" + cid + ".ipfs.w3s.link",
+                external_link : "https://app.toolblox.net/flow/" + req.query.workflowId + "/" + itemId,
+                // attributes: [
+                //     {
+                //       "trait_type": "Base", 
+                //       "value": "Starfish"
+                //     }
+                // ]
             },
             headers: {
                 'Content-Type': 'application/json'

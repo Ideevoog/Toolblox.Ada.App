@@ -104,7 +104,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 throw "No selected chain!";
                 case 2:
                     network = subscription.SelectedBlockchainKind == 0
-                        ? "https://matic-testnet-archive-rpc.bwarelabs.com"
+                        ? "https://rpc-mumbai.maticvigil.com/"
                         : "https://polygon-rpc.com/";
                     contractAddress = subscription.SelectedBlockchainKind == 0
                         ? ""
