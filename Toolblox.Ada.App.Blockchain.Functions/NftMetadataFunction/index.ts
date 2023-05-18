@@ -15,7 +15,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     const workflowList = client.listEntities<Workflow>({
         queryOptions: {
             filter: `Url eq '${workflowUrl}'`,
-            select: [ "Project", "Object", "SelectedChain", "SelectedBlockchainKind", "NearTestnet", "NearMainnet" ]
+            select: [ "Project", "Object", "SelectedChain", "SelectedBlockchainKind", "NearTestnet", "NearMainnet", "Abi" ]
         },
     });
     let workflow: Workflow = undefined;
@@ -26,6 +26,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     if (workflow == undefined) {
         throw new Error('Cannot find workflow with url ' + workflowUrl);
     }
+    //console.log("++++++++++ WORKFLOW: " + JSON.stringify(workflow));
     //const workflow = await client.getEntity<Workflow>("testnet", req.query.workflowId);
     // adds the keyPair you created to keyStore
     let cid = "";
@@ -90,8 +91,9 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 break;
                 case 6:
                     network = workflow.SelectedBlockchainKind == 0
-                        ? "https://rpc.sepolia.dev"
+                        ? "https://rpc.sepolia.org"
                         : "https://mainnet.infura.io/v3/";
+                break;
                 case 7:
                     network = workflow.SelectedBlockchainKind == 0
                         ? "https://data-seed-prebsc-2-s2.binance.org:8545/"
@@ -100,8 +102,10 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 default:
                     break;
             }
-            const abi = JSON.parse('[{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getDescription","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getImage","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getStatus","outputs":[{"internalType":"uint64","name":"","type":"uint64"}],"stateMutability":"view","type":"function"}]');
+            //const abi = JSON.parse('[{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getId","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getName","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getDescription","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getImage","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"id","type":"uint256"}],"name":"getStatus","outputs":[{"internalType":"uint64","name":"","type":"uint64"}],"stateMutability":"view","type":"function"}]');
             console.log("================ contract: " + contractAddress + ", workflowId : " + req.query.workflowId + ", network: " + network + ", itemId = " + itemId)
+            //console.log("================ abi to parse: " + workflow.Abi);
+            const abi = JSON.parse(workflow.Abi);
             const contract = new ethers.Contract(contractAddress, abi, new ethers.providers.JsonRpcProvider(network));
             name = await contract.getName(itemId);
             cid = await contract.getImage(itemId);
@@ -113,7 +117,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             body: {
                 name : name,
                 description : description,
-                image : "https://" + cid + ".ipfs.w3s.link",
+                image : "ipfs://" + cid,
                 external_link : "https://app.toolblox.net/flow/" + req.query.workflowId + "/" + itemId,
                 // attributes: [
                 //     {
@@ -135,6 +139,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 interface Workflow {
     partitionKey: string;
     rowKey: string;
+    Abi?: string;
     Project: string;
     Object: string;
     SelectedChain: number;
