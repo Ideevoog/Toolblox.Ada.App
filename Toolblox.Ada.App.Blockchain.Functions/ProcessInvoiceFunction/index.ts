@@ -7,8 +7,6 @@ const { keyStores, KeyPair, connect } = nearAPI;
 const myKeyStore = new keyStores.InMemoryKeyStore();
 const PRIVATE_KEY = process.env.NearAccountPrivateKey;
 const EVM_PRIVATE_KEY = process.env.EvmAccountPrivateKey;
-// creates a public / private key pair using the provided private key
-const keyPair = KeyPair.fromString(PRIVATE_KEY);
 const connectionConfig = {
     networkId: "testnet",
     keyStore: myKeyStore, // first create a key store 
@@ -21,6 +19,8 @@ const connectionConfig = {
 const tableStorageConnection = process.env["adawillhandlestorage_STORAGE"] || "";
 
 const queueTrigger: AzureFunction = async function (context: Context, myQueueItem: string): Promise<void> {
+    // creates a public / private key pair using the provided private key
+    const keyPair = KeyPair.fromString(PRIVATE_KEY);
     const client = TableClient.fromConnectionString(tableStorageConnection, `Invoices`);
     let accountantId = myQueueItem.split(':')[0].replace(/\"/gi, "");
     const invoice = await client.getEntity<Invoice>(accountantId, myQueueItem.split(':')[1]);
@@ -63,9 +63,9 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
             }
             else {
                 try {
-                    const price = await redstone.getPrice(invoice.Currency.toUpperCase());
-                    alternativeFxValue = price.value.toString();
-                    alternativeCurrency = "USD";
+                    // const price = await redstone.getPrice(invoice.Currency.toUpperCase());
+                    // alternativeFxValue = price.value.toString();
+                    // alternativeCurrency = "USD";
                 }
                 catch (ex) {
                     console.error(ex);
