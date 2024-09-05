@@ -105,6 +105,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                     }
                 })(),
                 network: result.network,
+                contentType: nft.image.contentType,
                 originalUrl: nft.image.originalUrl,
                 cachedUrl: nft.image.cachedUrl,
                 thumbnailUrl: nft.image.thumbnailUrl,
