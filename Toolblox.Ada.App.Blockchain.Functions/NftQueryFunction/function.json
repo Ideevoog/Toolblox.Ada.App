@@ -1,0 +1,17 @@
+{
+  "bindings": [
+    {
+        "authLevel": "anonymous",
+        "type": "httpTrigger",
+        "direction": "in",
+        "name": "req",
+        "route": "nft"
+    },
+    {
+        "type": "http",
+        "direction": "out",
+        "name": "res"
+    }
+  ],
+  "scriptFile": "../dist/NftQueryFunction/index.js"
+}
