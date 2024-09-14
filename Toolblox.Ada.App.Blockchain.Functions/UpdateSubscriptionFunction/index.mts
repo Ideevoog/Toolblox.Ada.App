@@ -1,21 +1,21 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { TableClient } from "@azure/data-tables";
 import * as ethers from 'ethers';
-var jwt = require('jsonwebtoken');
-var jwksClient = require('jwks-rsa');
-const nearAPI = require("near-api-js");
+import * as jwt from 'jsonwebtoken';
+import * as jwksRsa from 'jwks-rsa';
+import * as nearAPI from 'near-api-js';
 const { keyStores, connect } = nearAPI;
 const myKeyStore = new keyStores.InMemoryKeyStore();
 
 const tableStorageConnection = process.env["toolblox_STORAGE"] || "";
 
-var jwksClient = require('jwks-rsa');
+import jwksClient from 'jwks-rsa';
 var client = jwksClient({
   jwksUri: 'https://toolblox.eu.auth0.com/.well-known/jwks.json'
 });
 
 function getKey(header, callback){
-  client.getSigningKey(header.kid, function(err, key) {
+  client.getSigningKey(header.kid, function(err, key : any) {
     var signingKey = key.publicKey || key.rsaPublicKey;
     callback(null, signingKey);
   });
@@ -35,7 +35,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                     {
                         throw err;
                     }
-                    resolve(decoded.sub);
+                    resolve(decoded.sub as any);
                 });
         });
     var userId = await login();
@@ -92,7 +92,9 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 viewMethods: ['getItemIdByExternalId', 'getValidUntil'],
                 changeMethods: []
             });
+            // @ts-ignore
             var itemId = await contract.getItemIdByExternalId({ "externalId": userId });
+            // @ts-ignore
             var validUntil = await contract.getValidUntil({ "id": itemId });
             subscription.ValidUntil = { value: validUntil.toString(), type: "Int64" };
             console.log("Found valid until for user: " + userId + ", sub:" + itemId + ", subscription: " + subscription);

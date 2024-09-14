@@ -13,5 +13,5 @@
         "name": "res"
     }
   ],
-  "scriptFile": "../dist/NftMetadataFunction/index.js"
+  "scriptFile": "../dist/NftMetadataFunction/index.mjs"
 }

@@ -4,5 +4,13 @@
   "azureFunctions.projectLanguage": "TypeScript",
   "azureFunctions.projectRuntime": "~4",
   "debug.internalConsoleOptions": "neverOpen",
-  "azureFunctions.preDeployTask": "npm prune (functions)"
+  "azureFunctions.preDeployTask": "npm prune (functions)",
+  "search.exclude": {
+    "**/bower_component": true,
+    "**/bower_components": false,
+    "**/node_modules": false,
+    "**/node_modules2": true
+  },
+  "search.useIgnoreFiles": true,
+  "search.useGlobalIgnoreFiles": false
 }

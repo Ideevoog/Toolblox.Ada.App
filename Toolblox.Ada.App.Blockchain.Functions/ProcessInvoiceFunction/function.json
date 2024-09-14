@@ -15,5 +15,5 @@
       "connection": "adawillhandlestorage_STORAGE"
     }
   ],
-  "scriptFile": "../dist/ProcessInvoiceFunction/index.js"
+  "scriptFile": "../dist/ProcessInvoiceFunction/index.mjs"
 }

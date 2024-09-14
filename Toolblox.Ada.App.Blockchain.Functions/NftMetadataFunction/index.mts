@@ -1,7 +1,7 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 import { TableClient } from "@azure/data-tables";
 import * as ethers from 'ethers';
-const nearAPI = require("near-api-js");
+import * as nearAPI from 'near-api-js';
 const { keyStores, KeyPair, connect } = nearAPI;
 const myKeyStore = new keyStores.InMemoryKeyStore();
 
@@ -61,6 +61,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 viewMethods: ['getItem'],
                 changeMethods: []
             });
+            // @ts-ignore
             var item = await contract.getItem({ "id": itemId });
             cid = item.image;
             name = item.name;

@@ -2,7 +2,7 @@ import { AzureFunction, Context } from "@azure/functions";
 import { Edm, TableClient } from "@azure/data-tables";
 import * as redstone from 'redstone-api';
 import * as ethers from 'ethers';
-const nearAPI = require("near-api-js");
+import * as nearAPI from "near-api-js";
 const { keyStores, KeyPair, connect } = nearAPI;
 const myKeyStore = new keyStores.InMemoryKeyStore();
 const PRIVATE_KEY = process.env.NearAccountPrivateKey;
@@ -57,6 +57,7 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
                     viewMethods: ['get_price_data'],
                     changeMethods: []
                 });
+                // @ts-ignore
                 var multiplier = (await oracleContract.get_price_data({ "asset_ids": ["wrap.testnet"] })).prices[0].price.multiplier;
                 alternativeFxValue = (Number(multiplier.toString()) / 10000).toString();
                 alternativeCurrency = "USD";
@@ -83,12 +84,15 @@ const queueTrigger: AzureFunction = async function (context: Context, myQueueIte
                 //Near
                 if (invoice.InvoiceNr == undefined || Number(invoice.InvoiceNr) == 0) {
                     console.log("Running processExternal");
+                    
+                // @ts-ignore
                     var item = await contract.processExternal({ "name": invoice.Article, "amount": invoice.Amount, "currency": invoice.Currency, "from": invoice.From, "to": invoice.To, "receipt": invoice.rowKey, "processFee": processFee.toString() });
                     var itemId = item.id;
                     invoice.InvoiceNr = BigInt(itemId);
                 } else {
                     //process
                     console.log("Running process for invoice " + invoice.InvoiceNr);
+                    // @ts-ignore
                     await contract.process({ "id": Number(invoice.InvoiceNr), "receipt": invoice.rowKey, "processFee": processFee.toString() });
                 }
             }

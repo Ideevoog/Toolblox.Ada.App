@@ -10,16 +10,21 @@
     "test": "echo \"No tests yet...\""
   },
   "dependencies": {
+    "@aa-sdk/core": "^4.0.0-beta.2",
+    "@account-kit/core": "^4.0.0-beta.2",
+    "@account-kit/infra": "^4.0.0-beta.2",
     "@azure/data-tables": "^13.2.0",
-    "alchemy-sdk": "^3.4.1",
+    "@azure/storage-queue": "^12.23.0",
     "ethers": "^5.7.2",
     "jsonwebtoken": "^9.0.0",
     "jwks-rsa": "^3.0.1",
     "near-api-js": "^1.1.0",
-    "redstone-api": "^0.4.11"
+    "redstone-api": "^0.4.11",
+    "viem": "^2.20.0"
   },
   "devDependencies": {
     "@azure/functions": "^3.0.0",
     "@types/node": "^18.11.10"
-  }
+  },
+  "type": "module"
 }

@@ -13,5 +13,5 @@
         "name": "res"
     }
   ],
-  "scriptFile": "../dist/UpdateSubscriptionFunction/index.js"
+  "scriptFile": "../dist/UpdateSubscriptionFunction/index.mjs"
 }

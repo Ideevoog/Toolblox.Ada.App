@@ -1,54 +1,18 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { TableClient } from "@azure/data-tables";
 import { Alchemy, Network } from "alchemy-sdk";
+import { getProfileIdFromRequest, getAlchemyConfiguration } from '../lib/helpers.mjs';
 
-const tableStorageConnection = process.env["toolblox_STORAGE"] || "";
 const networks = (process.env["alchemy_NETWORKS"] || "").split(",").map(n => n.trim());
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
-    const tableClient = TableClient.fromConnectionString(tableStorageConnection, "Profile");
-    let alchemyApiKey: string;
-    const apiKey = req.query.apiKey || req.body?.apiKey;
-    if (!apiKey) {
-        context.res = {
-            status: 400,
-            body: "Please provide an API key"
-        };
+    const profileId = await getProfileIdFromRequest(req, context);
+    if (!profileId) {
         return;
     }
-
-    let profileId: string;
-    try {
-        const apiKeyTableClient = TableClient.fromConnectionString(tableStorageConnection, "ApiKeys");
-        const apiKeyEntity = await apiKeyTableClient.getEntity("", apiKey);
-        profileId = apiKeyEntity.UserId as string;
-    } catch (error) {
-        context.log.error("Failed to fetch profile ID from API key:", error);
-        context.res = {
-            status: 401,
-            body: "Invalid API key"
-        };
-        return;
-    }
-
-    try {
-        const entity = await tableClient.getEntity("", profileId, {
-            queryOptions: {
-                select: ["AlchemyKey"]
-            }
-        });
-        alchemyApiKey = entity.AlchemyKey.toString();
-    } catch (error) {
-        context.log.error("Failed to fetch Alchemy API key from table storage:", error);
-        throw new Error("Unable to retrieve Alchemy API key");
-    }
-
+    const alchemyApiKey = (await getAlchemyConfiguration(profileId, context))?.apiKey;
     if (!alchemyApiKey) {
-        throw new Error("Alchemy API key not found in table storage");
+        throw new Error("Alchemy API key not found or unable to retrieve");
     }
-
-    context.log("Alchemy API key retrieved successfully");
-
     const address = req.query.address || req.body?.address;
     if (!address) {
         context.res = {
