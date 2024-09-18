@@ -1,10 +1,5 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
-import { getProfileIdFromRequest, getAlchemyConfiguration, UserOperationContext } from '../lib/helpers.mjs';
-import { createAlchemySmartAccountClient, baseSepolia } from "@account-kit/infra";
-import { createLightAccount } from "@account-kit/smart-contracts";
-import { http } from "viem";
-import { generatePrivateKey } from "viem/accounts";
-import { LocalAccountSigner } from "@aa-sdk/core";
+import { getProfileIdFromRequest, getAlchemyConfiguration, createAlchemySmartAccountClientWithConfig } from '../lib/helpers.mjs';
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
     const profileId = await getProfileIdFromRequest(req, context);
@@ -25,72 +20,61 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
         };
         return;
     }
-    const userOperationContexts: UserOperationContext[] = req.body.userOperationContexts;
+    const userOperationContext = req.body;
 
-    if (!userOperationContexts || !Array.isArray(userOperationContexts)) {
+    if (!userOperationContext || typeof userOperationContext !== 'object') {
         context.res = {
             status: 400,
-            body: "Please provide an array of UserOperationContext in the request body"
+            body: "Please provide a single UserOperationContext object in the request body"
         };
         return;
     }
 
-    const client = createAlchemySmartAccountClient({
-        apiKey: alchemyApiKey,
-        policyId: alchemyConfig.policyId,
-        chain: baseSepolia,
-        account: await createLightAccount({
-            chain: baseSepolia,
-            transport: http(`${baseSepolia.rpcUrls.alchemy.http[0]}/${alchemyApiKey}`),
-            signer: LocalAccountSigner.privateKeyToAccountSigner(generatePrivateKey()),
-        }),
-    });
-    var account = client.account;
+    try {
+        const { operation, signature, from } = userOperationContext;
 
-    const entryPointAddress  = account.getEntryPoint().address;
-    const results: UserOperationContext[] = [];
+        const { client } = await createAlchemySmartAccountClientWithConfig(alchemyConfig, from);
+        var account = client.account;
 
-    for (const context of userOperationContexts) {
+        const entryPointAddress = account.getEntryPoint().address;
+
+        // Ensure real signature is set
+        operation.uoStruct.signature = signature;
+        
+        const hash = await client.sendRawUserOperation(
+            operation.uoStruct,
+            entryPointAddress
+        );
+
+        let txHash;
         try {
-            const { userOperation } = context;
-            
-            const hash = await client.sendRawUserOperation(
-                userOperation,
-                entryPointAddress
-            );
+            // Wait for the operation to be mined
+            txHash = await client.waitForUserOperationTransaction({ hash });
+        } catch (e) {
+            // If it fails, attempt drop-and-replace
+            const { hash: newHash } = await client.dropAndReplaceUserOperation({
+                uoToDrop: operation.uoStruct,
+                account: client.account,
+            });
+            txHash = await client.waitForUserOperationTransaction({ hash: newHash });
+        }
 
-            try {
-                // Wait for the operation to be mined
-                const txHash = await client.waitForUserOperationTransaction({ hash });
-                results.push({ ...context, txHash });
-            } catch (e) {
-                // If it fails, attempt drop-and-replace
-                const { hash: newHash } = await client.dropAndReplaceUserOperation({
-                    uoToDrop: userOperation,
-                    account: client.account,
-                });
-                const newTxHash = await client.waitForUserOperationTransaction({ hash: newHash });
-                results.push({ ...context, txHash: newTxHash });
+        context.res = {
+            status: 200,
+            body: {
+                message: "User operation processed successfully",
+                hash: txHash
             }
-        } catch (error) {
-            results.push({ ...context, error: error.message });
-        }
-
-        // Add a 2-second delay if there are more operations to process
-        //TODO: add to alchemy config
-        if (alchemyConfig.delay > 0
-            && userOperationContexts.indexOf(context) < userOperationContexts.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, alchemyConfig.delay));
-        }
+        };
+    } catch (error) {
+        context.res = {
+            status: 200,
+            body: {
+                message: "Error processing user operation",
+                error: error.message
+            }
+        };
     }
-
-    context.res = {
-        status: 200,
-        body: {
-            message: "User operations processed",
-            results
-        }
-    };
 };
 
 export default httpTrigger;

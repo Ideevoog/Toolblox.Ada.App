@@ -1,6 +1,12 @@
 import { HttpRequest, Context } from "@azure/functions";
 import { TableClient } from "@azure/data-tables";
 
+import { http, Hex } from "viem";
+
+import { LocalAccountSigner } from "@aa-sdk/core";
+import { createAlchemySmartAccountClient, baseSepolia } from "@account-kit/infra";
+import { createLightAccount } from "@account-kit/smart-contracts";
+import { LocalAccount } from "viem/accounts";
 const tableStorageConnection = process.env["toolblox_STORAGE"] || "";
 
 export async function getProfileIdFromRequest(req: HttpRequest, context: Context): Promise<string | null> {
@@ -45,6 +51,71 @@ export async function getAlchemyConfiguration(profileId: string, context: Contex
         return { apiKey: null, policyId: null, delay: 2000 };
     }
 }
+
+export async function createAlchemySmartAccountClientWithConfig(alchemyConfig: any, from: string) {    
+  const localAccount: LocalAccount = {
+      address: from as `0x${string}`,
+      publicKey: '0xYourPublicKey' as Hex,
+      source: 'customSource',
+      type: 'local',
+      signMessage: async (args) => {
+          // Implement your custom signMessage logic here
+          return '0xYourSignature' as Hex;
+      },
+      signTransaction: async (args) => {
+          // Implement your custom signTransaction logic here
+          return '0xYourTransactionSignature' as Hex;
+      },
+      signTypedData: async (args) => {
+          // Implement your custom signTypedData logic here
+          return '0xYourTypedDataSignature' as Hex;
+      },
+  };
+  const templateAccount = await createLightAccount({
+      chain: baseSepolia,
+      transport: http(`${baseSepolia.rpcUrls.alchemy.http[0]}/${alchemyConfig.apiKey}`),
+      signer: new LocalAccountSigner(localAccount),
+  });
+  const entryPoint = templateAccount.getEntryPoint();
+  return {
+      client: createAlchemySmartAccountClient({
+          apiKey: alchemyConfig.apiKey,
+          policyId: alchemyConfig.policyId,
+          chain: baseSepolia,
+          useSimulation: true,
+          account : templateAccount,
+      }),
+      entryPoint: entryPoint,
+  };
+}
+
+// Define the convenience method outside of the loop
+export async function fetchWorkflowEntity(tableClient: TableClient, workflowUrl: string, userId: string): Promise<Workflow | undefined> {
+  const workflowList = tableClient.listEntities<Workflow>({
+      queryOptions: {
+          filter: `Url eq '${workflowUrl}' and User eq '${userId}'`,
+          select: [ "Abi", "partitionKey", "rowKey", "Project", "Object", "SelectedChain", "SelectedBlockchainKind", "NearTestnet", "NearMainnet", "Url", "User" ]
+      },
+  });
+  return (await workflowList.next())?.value;
+}
+
+export interface Workflow {
+    partitionKey: string;
+    rowKey: string;
+    Abi?: string;
+    Project: string;
+    Object: string;
+    SelectedChain: number;
+    SelectedBlockchainKind: number;
+    NearTestnet?: string;
+    NearMainnet?: string;
+}
+
+export function GetAddress(workflow: Workflow): string | undefined {
+    return workflow.SelectedBlockchainKind === 0 ? workflow.NearTestnet : workflow.NearMainnet;
+}
+
 
 export const LightAccountFactoryAbi_v2 = [
     {
@@ -262,4 +333,7 @@ export interface UserOperationContext {
     txHash: `0x${string}`;
     error: string;
     ids: string[];
+    entryPointAddress : `0x${string}`;
+    uoPacked : `0x${string}`;
+    from: `0x${string}`;
 }

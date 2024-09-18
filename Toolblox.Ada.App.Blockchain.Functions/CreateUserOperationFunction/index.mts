@@ -1,19 +1,11 @@
 import { AzureFunction, Context, HttpRequest } from "@azure/functions";
 
-import { getProfileIdFromRequest, getAlchemyConfiguration, UserOperationContext } from '../lib/helpers.mjs';
+import { fetchWorkflowEntity, GetAddress, getProfileIdFromRequest, getAlchemyConfiguration, UserOperationContext, createAlchemySmartAccountClientWithConfig } from '../lib/helpers.mjs';
 import { TableClient } from "@azure/data-tables";
 import { ethers } from "ethers";
 
-import { createAlchemySmartAccountClient, baseSepolia } from "@account-kit/infra";
-import { createLightAccount } from "@account-kit/smart-contracts";
-
-import { LocalAccountSigner, UserOperationRequest, UserOperationRequest_v7, UserOperationRequest_v6,   deepHexlify,
-    isValidRequest,
-    resolveProperties} from "@aa-sdk/core";
-import { http, RpcTransactionRequest, Hex, toHex } from "viem";
-
-import { LocalAccount } from "viem/accounts";
-import { error } from "console";
+import { deepHexlify } from "@aa-sdk/core";
+import { RpcTransactionRequest } from "viem";
 
 const httpTrigger: AzureFunction = async function (context: Context, req: HttpRequest): Promise<void> {
     const profileId = await getProfileIdFromRequest(req, context);
@@ -77,38 +69,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
 
     for (const [from, operations] of Object.entries(groupedOperations)) {
         try {
-            const localAccount: LocalAccount = {
-                address: from as `0x${string}`,
-                publicKey: '0xYourPublicKey' as Hex,
-                source: 'customSource',
-                type: 'local',
-                signMessage: async (args) => {
-                    // Implement your custom signMessage logic here
-                    return '0xYourSignature' as Hex;
-                },
-                signTransaction: async (args) => {
-                    // Implement your custom signTransaction logic here
-                    return '0xYourTransactionSignature' as Hex;
-                },
-                signTypedData: async (args) => {
-                    // Implement your custom signTypedData logic here
-                    return '0xYourTypedDataSignature' as Hex;
-                },
-            };
-            const templateAccount =  await createLightAccount({
-                chain: baseSepolia,
-                transport: http(`${baseSepolia.rpcUrls.alchemy.http[0]}/krtsKzom1MUv5MG3LHuYzw82NgZGprBC`),
-                signer: new LocalAccountSigner(localAccount),
-            });
-            const entryPoint = templateAccount.getEntryPoint();
-
-            const client = createAlchemySmartAccountClient({
-                apiKey: "krtsKzom1MUv5MG3LHuYzw82NgZGprBC",//alchemyApiKey,
-                policyId: alchemyConfig.policyId,
-                chain: baseSepolia,
-                useSimulation: false,
-                account : templateAccount,
-            });
+            const { client, entryPoint } = await createAlchemySmartAccountClientWithConfig(alchemyConfig, from);
             const account = client.account;
 
             const requests: RpcTransactionRequest[] = [];
@@ -135,27 +96,22 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             }
 
             // This runs all middleware (e.g., gas estimation, paymaster checks)
-            const userOp = await client.buildUserOperationFromTxs({ account, requests,
-                /*overrides : {
-                    maxFeePerGas: 10000,
-                    maxPriorityFeePerGas: 10000,
-                    callGasLimit: 10000,
-                    preVerificationGas: 10000,
-                    verificationGasLimit: 10000,
-                }*/
-            });
-              
+            const userOp = await client.buildUserOperationFromTxs({ account, requests });
             const request = deepHexlify(userOp);
 
             // Generate the user operation hash (to be compared and signed)
             const userOpHash = await entryPoint.getUserOperationHash(request.uoStruct);
-            
+            const userOpPacked = await entryPoint.packUserOperation(request.uoStruct);
+
             userOperationContexts.push({
                 userOperation: request,
                 hash: userOpHash,
                 error: null,
                 ids: Array.isArray(operations) ? operations.map(op => op.id as string) : [],
                 txHash: null,
+                entryPointAddress: entryPoint.address,
+                uoPacked: userOpPacked,
+                from: from as `0x${string}`
             });
         } catch (error) {
             userOperationContexts.push({
@@ -164,6 +120,9 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
                 error: `Error processing operations for address ${from}: ${error.message}`,
                 ids: Array.isArray(operations) ? operations.map(op => op.id as string) : [],
                 txHash: null,
+                entryPointAddress: null,
+                uoPacked: null,
+                from: null
             });
         }
     }
@@ -181,31 +140,5 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     };
 };
 
-interface Workflow {
-    partitionKey: string;
-    rowKey: string;
-    Abi?: string;
-    Project: string;
-    Object: string;
-    SelectedChain: number;
-    SelectedBlockchainKind: number;
-    NearTestnet?: string;
-    NearMainnet?: string;
-}
-
-function GetAddress(workflow: Workflow): string | undefined {
-    return workflow.SelectedBlockchainKind === 0 ? workflow.NearTestnet : workflow.NearMainnet;
-}
-
-// Define the convenience method outside of the loop
-async function fetchWorkflowEntity(tableClient: TableClient, workflowUrl: string, userId: string): Promise<Workflow | undefined> {
-    const workflowList = tableClient.listEntities<Workflow>({
-        queryOptions: {
-            filter: `Url eq '${workflowUrl}' and User eq '${userId}'`,
-            select: [ "Abi", "partitionKey", "rowKey", "Project", "Object", "SelectedChain", "SelectedBlockchainKind", "NearTestnet", "NearMainnet", "Url", "User" ]
-        },
-    });
-    return (await workflowList.next())?.value;
-}
 
 export default httpTrigger;
