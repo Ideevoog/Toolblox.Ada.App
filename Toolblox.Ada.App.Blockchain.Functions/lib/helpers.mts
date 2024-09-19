@@ -3,7 +3,7 @@ import { TableClient } from "@azure/data-tables";
 
 import { http, Hex } from "viem";
 
-import { LocalAccountSigner } from "@aa-sdk/core";
+import { LocalAccountSigner, Logger, LogLevel } from "@aa-sdk/core";
 import { createAlchemySmartAccountClient, baseSepolia } from "@account-kit/infra";
 import { createLightAccount } from "@account-kit/smart-contracts";
 import { LocalAccount } from "viem/accounts";
@@ -71,11 +71,19 @@ export async function createAlchemySmartAccountClientWithConfig(alchemyConfig: a
           return '0xYourTypedDataSignature' as Hex;
       },
   };
-  const templateAccount = await createLightAccount({
+  //Logger.setLogLevel(LogLevel.VERBOSE);
+  let templateAccount;
+  const url = `${baseSepolia.rpcUrls.alchemy.http[0]}/${alchemyConfig.apiKey}`;
+  try {
+    templateAccount = await createLightAccount({
       chain: baseSepolia,
-      transport: http(`${baseSepolia.rpcUrls.alchemy.http[0]}/${alchemyConfig.apiKey}`),
+      transport: http(url),
       signer: new LocalAccountSigner(localAccount),
-  });
+    });
+  } catch (error) {
+    console.error(`Error creating light account for URL: ${url}, from: ${from}`, error);
+    throw new Error(`Failed to create light account for URL: ${url}, from: ${from}. Original error: ${error.message}`);
+  }
   const entryPoint = templateAccount.getEntryPoint();
   return {
       client: createAlchemySmartAccountClient({
