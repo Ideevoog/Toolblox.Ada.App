@@ -117,7 +117,7 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             userOperationContexts.push({
                 userOperation: {},
                 hash: '0x' as `0x${string}`,
-                error: `Error processing operations for address ${from}: ${error.message}`,
+                error: `Error processing operations for address ${from}: ${error.message}. Stack trace: ${error.stack}`,
                 ids: Array.isArray(operations) ? operations.map(op => op.id as string) : [],
                 txHash: null,
                 entryPointAddress: null,
