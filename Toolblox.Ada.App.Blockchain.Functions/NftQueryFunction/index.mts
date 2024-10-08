@@ -23,7 +23,8 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
     }
 
     try {
-        const nftPromises = networks.map(async (networkName) => {
+        const results = [];
+        for (const networkName of networks) {
             let network = networkName as Network;
             const config = {
                 apiKey: alchemyApiKey,
@@ -31,10 +32,11 @@ const httpTrigger: AzureFunction = async function (context: Context, req: HttpRe
             };
             const alchemy = new Alchemy(config);
             const nfts = await alchemy.nft.getNftsForOwner(address);
-            return { network: networkName, nfts: nfts.ownedNfts };
-        });
-
-        const results = await Promise.all(nftPromises);
+            results.push({ network: networkName, nfts: nfts.ownedNfts });
+            
+            // Wait for 1 second plus 200ms before the next iteration
+            await new Promise(resolve => setTimeout(resolve, 1200));
+        }
         const formattedResults = results.flatMap(result => 
             result.nfts.filter(nft => 
                 nft.image && 
